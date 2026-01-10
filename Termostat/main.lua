@@ -19,7 +19,8 @@ gpio.mode(pin_LED_WIFI, gpio.OUTPUT)
 gpio.mode(pin_LED_MQTT, gpio.OUTPUT)
 
 --Setez valorile implicite
-ESP_Name = "Undefined"
+Sensor_ID = "Undefined"
+RoomName = "Undefined"
 TMP_Current, HUM_Current = 0, 0
 
 --Citesc temperatura setata
@@ -105,11 +106,14 @@ SensorTimer:start()
 
 --Connect to WiFi
 local config = dofile("config.lua")
-local ssid, pass, ESP_Name = config.loadConfig()
+local ssid, pass, Sensor_ID, loadedRoomName = config.loadConfig()
+if loadedRoomName ~= nil then
+	RoomName = loadedRoomName
+end
 config = nil
 collectgarbage()
 if ssid ~= nil then
-	print("ssid = "..ssid.."\npassword = "..pass.."\nESP_name = "..ESP_Name.."\n")
+	print("ssid = "..ssid.."\npassword = "..pass.."\nSensor_ID = "..Sensor_ID.."\nRoomName = "..RoomName.."\n")
 end
 
 
@@ -120,7 +124,7 @@ if ssid == nil then
   collectgarbage()
 else
   local wifiConn = dofile("wifi.lua")
-  wifiConn.tryConnectWiFi(ssid, pass, ESP_Name)
+  wifiConn.tryConnectWiFi(ssid, pass, Sensor_ID)
   wifiConn = nil
   collectgarbage()
 end
@@ -132,7 +136,7 @@ tmr.create():alarm(60000, tmr.ALARM_SINGLE,function() --starts after one minute 
 		gpio.write(pin_LED_WIFI, gpio.LOW)
 		print("WiFi lost, retrying to connect...")
 		local wifiConn = dofile("wifi.lua")
-		wifiConn.tryConnectWiFi(ssid, pass, ESP_Name)
+		wifiConn.tryConnectWiFi(ssid, pass, Sensor_ID)
 		wifiConn = nil
 		collectgarbage()
 	  end

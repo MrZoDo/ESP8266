@@ -1,6 +1,6 @@
 local W = {}
 local retryCount = 0
-function W.tryConnectWiFi(ssid, pass, ESP_Name)
+function W.tryConnectWiFi(ssid, pass, Sensor_ID)
 	print("Try connect to WiFi")
 	wifi_timer = tmr.create()
 	station_cfg={}
@@ -18,7 +18,7 @@ function W.tryConnectWiFi(ssid, pass, ESP_Name)
 		gpio.write(pin_LED_WIFI, gpio.HIGH)
 		--Continue with MQTT connect
 		local MQTT = dofile("mqtt.lua")
-		MQTT.startMQTT(ESP_Name)
+		MQTT.startMQTT(Sensor_ID)
 		MQTT = nil
 		collectgarbage()
 	  elseif retryCount >= 5 then

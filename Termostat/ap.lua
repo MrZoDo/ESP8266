@@ -33,16 +33,16 @@ function A.start_ap()
         local params = parse_Params(query)
         local ssid = params["ssid"]
         local pwd = params["pwd"]
-        local espname = params["name"]
+        local sensor_id = params["id"]
 
-        if ssid and espname then
+        if ssid and sensor_id then
 			print("Saving Wi-Fi settings:")
 			print("SSID:", ssid)
 			print("PWD :", pwd)
-			print("ESP_NAME:", espname)
+			print("SENSOR_ID:", sensor_id)
 			
 			local cfg = dofile("config.lua")
-			cfg.saveConfig(ssid, pwd, espname)
+			cfg.saveConfig(ssid, pwd, sensor_id)
 			cfg = nil
 			collectgarbage()
 
@@ -66,7 +66,7 @@ function A.start_ap()
         <form>
           SSID: <input type="text" name="ssid"><br>
           Password: <input type="password" name="pwd"><br>
-          ESP Name: <input type="text" name="name"><br>
+          Sensor ID: <input type="text" name="id"><br>
           <input type="submit" value="Save">
         </form>
         </body></html>

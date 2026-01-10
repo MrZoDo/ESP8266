@@ -4,11 +4,6 @@
 
 local T = {}
 
--- Debounce delay in ms
-local DEBOUNCE_DELAY = 200
-local last_up_press = 0
-local last_down_press = 0
-
 --Functie pentru a citi temperatura setata
 function T.loadTempSet()
   if file.exists("TempSet.txt") then
@@ -34,23 +29,27 @@ end
 
 -- Functie pentru a creste TEMP
 function T.Temp_up()
-    local now = tmr.now() / 1000
-    if now - last_up_press > DEBOUNCE_DELAY then
-        TMP_Set = TMP_Set + 1
-        T.saveTempSet(TMP_Set)
-		print("TMP_Set =", TMP_Set)
-        last_up_press = now
-    end
+	TMP_Set = TMP_Set + 1
+	T.saveTempSet(TMP_Set)
+	print("TMP_Set =", TMP_Set)
+	-- Publish MQTT message if client is connected
+	if mqtt_client ~= nil and RoomName ~= "Undefined" then
+		mqtt_client:publish("RoomTemp/ChangeSetpoint", 
+			sjson.encode({ ROOM=RoomName, SETPOINT=TMP_Set }), 0, 0)
+		print("Published setpoint change to MQTT")
+	end
 end
 
 -- Functie pentru a scadea TEMP
 function T.Temp_down()
-    local now = tmr.now() / 1000
-    if now - last_down_press > DEBOUNCE_DELAY then
-        TMP_Set = TMP_Set - 1
-        T.saveTempSet(TMP_Set)
-		print("TMP_Set =", TMP_Set)
-        last_down_press = now
-    end
+	TMP_Set = TMP_Set - 1
+	T.saveTempSet(TMP_Set)
+	print("TMP_Set =", TMP_Set)
+	-- Publish MQTT message if client is connected
+	if mqtt_client ~= nil and RoomName ~= "Undefined" then
+		mqtt_client:publish("RoomTemp/ChangeSetpoint", 
+			sjson.encode({ ROOM=RoomName, SETPOINT=TMP_Set }), 0, 0)
+		print("Published setpoint change to MQTT")
+	end
 end
 return T

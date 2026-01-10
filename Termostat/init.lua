@@ -1,7 +1,15 @@
 --Lista fisierelor ce trebuie sa existe
---MAIN.lua
---config.lua
---i2clcdpcf.lua
+    --ap.lua
+    --config.lua
+    --init.lua
+    --lcd.lua
+    --main.lua
+    --mqtt.lua
+    --reset.lua
+    --sensor.lua
+    --temp.lua
+    --wifi.lua
+    --i2clcdpcf.lua
 
 
 --Incarc libraria de LCD 
