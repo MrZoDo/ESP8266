@@ -11,10 +11,14 @@ function M.loadConfig()
     if roomname then
       roomname = roomname:gsub("%s+$","")
     end
+    local sensorname = s:readline()
+    if sensorname then
+      sensorname = sensorname:gsub("%s+$","")
+    end
     s:close()
-    return ssid, pwd, sensor_id, roomname
+    return ssid, pwd, sensor_id, roomname, sensorname
   end
-  return nil, nil, nil, nil
+  return nil, nil, nil, nil, nil
 end
 function M.saveConfig(ssid, pwd, sensor_id)
   file.open("ESP_Config.txt","w+")
@@ -23,16 +27,17 @@ function M.saveConfig(ssid, pwd, sensor_id)
   file.writeline(sensor_id)
   file.close()
 end
-function M.saveRoomName(roomname)
+function M.saveSensorInfo(roomname, sensorname)
   -- Read existing config
   local ssid, pwd, sensor_id = M.loadConfig()
   if ssid ~= nil then
-    -- Write back with room name
+    -- Write back with room and sensor name
     file.open("ESP_Config.txt","w+")
     file.writeline(ssid)
     file.writeline(pwd)
     file.writeline(sensor_id)
-    file.writeline(roomname)
+    file.writeline(roomname or "Undefined")
+    file.writeline(sensorname or "Undefined")
     file.close()
   end
 end

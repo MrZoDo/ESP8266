@@ -20,6 +20,7 @@ gpio.mode(pin_LED_MQTT, gpio.OUTPUT)
 
 --Setez valorile implicite
 Sensor_ID = "Undefined"
+SensorName = "Undefined"
 RoomName = "Undefined"
 TMP_Current, HUM_Current = 0, 0
 
@@ -106,14 +107,17 @@ SensorTimer:start()
 
 --Connect to WiFi
 local config = dofile("config.lua")
-local ssid, pass, Sensor_ID, loadedRoomName = config.loadConfig()
+local ssid, pass, Sensor_ID, loadedRoomName, loadedSensorName = config.loadConfig()
 if loadedRoomName ~= nil then
 	RoomName = loadedRoomName
+end
+if loadedSensorName ~= nil then
+	SensorName = loadedSensorName
 end
 config = nil
 collectgarbage()
 if ssid ~= nil then
-	print("ssid = "..ssid.."\npassword = "..pass.."\nSensor_ID = "..Sensor_ID.."\nRoomName = "..RoomName.."\n")
+	print("ssid = "..ssid.."\npassword = "..pass.."\nSensor_ID = "..Sensor_ID.."\nSensorName = "..SensorName.."\nRoomName = "..RoomName.."\n")
 end
 
 

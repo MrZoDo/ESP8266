@@ -1,9 +1,9 @@
 local M = {}
-function M.startMQTT(Sensor_ID)
+function M.startMQTT(clientName,Sensor_ID)
   MQTT_HOST = "192.168.0.110"
   MQTT_PORT = ""		
-  mqtt_client = mqtt.Client(Sensor_ID, 60, "", "")
-  mqtt_client:lwt("/lwt", "Living - OFF", 0, 0)
+  mqtt_client = mqtt.Client(clientName, 60, "", "")
+  mqtt_client:lwt("/lwt", clientName.." - OFF", 0, 0)
   mqtt_client:connect(MQTT_HOST, MQTT_PORT, 0, 0)
   mqtt_client:on("connect", function()
     gpio.write(pin_LED_MQTT, gpio.HIGH)
@@ -19,7 +19,8 @@ function M.startMQTT(Sensor_ID)
       print("Room name is set: "..RoomName)
       mqtt_client:subscribe("RoomTemp/Cerere", 0)
       mqtt_client:subscribe("RoomTemp/Setpoint/"..RoomName, 0)
-      print("Subscribed to topics")
+      mqtt_client:publish("RoomStatus/Raspuns", sjson.encode({ ROOM=RoomName, Status="Online" }), 0, 0)
+      print("Subscribed to topics and sent Online status")
     end
   end)
 
@@ -30,44 +31,80 @@ function M.startMQTT(Sensor_ID)
       -- Received room name from broker
       print("Received room name response: "..msg)
       local ok, response = pcall(sjson.decode, msg)
-      if ok and response.room then
+      if ok and response.room and response.sensor_name then
         RoomName = response.room
+        SensorName = response.sensor_name
         print("Extracted room name: "..RoomName)
+        print("Extracted sensor name: "..SensorName)
       else
-        print("Error parsing room name response")
+        print("Error parsing room name response or missing fields")
         return
       end
 
-      
-      -- Save room name to config file
+      -- Save room name and sensor name to config file
       local config = dofile("config.lua")
-      config.saveRoomName(RoomName)
+      config.saveSensorInfo(RoomName, SensorName)
       config = nil
       collectgarbage()
       
-      print("Room name saved, reconnecting to MQTT...")
+      print("Room name and sensor name saved")
+
       -- Unsubscribe from RoomName/Response
       mqtt_client:unsubscribe("RoomName/Response")
       
-      -- Subscribe to actual topics
-      mqtt_client:subscribe("RoomTemp/Cerere", 0)
-      mqtt_client:subscribe("RoomTemp/Setpoint/"..RoomName, 0)
-      print("Subscribed to topics with room name: "..RoomName)
+      -- Close current connection
+      mqtt_client:close()
+      
+      -- Reconnect with sensor name as client ID
+      mqtt_client = mqtt.Client(SensorName, 60, "", "")
+      mqtt_client:lwt("/lwt", RoomName.." - OFF", 0, 0)
+      mqtt_client:connect(MQTT_HOST, MQTT_PORT, 0, 0)
+      mqtt_client:on("connect", function()
+        gpio.write(pin_LED_MQTT, gpio.HIGH)
+        print("Reconnected to MQTT broker with sensor name: "..SensorName)
+        
+        -- Subscribe to actual topics
+        mqtt_client:subscribe("RoomTemp/Cerere", 0)
+        mqtt_client:subscribe("RoomTemp/Setpoint/"..RoomName, 0)
+        mqtt_client:publish("RoomStatus/Raspuns", sjson.encode({ ROOM=RoomName, Status="Online" }), 0, 0)
+        print("Subscribed to topics and sent Online status with room name: "..RoomName)
+      end)
+      
+      -- Re-register message handler for the new client
+      mqtt_client:on("message", function(_, topic, msg)
+        print("MQTT", topic, msg)
+        
+        if topic == "RoomTemp/Cerere" then
+          mqtt_client:publish("RoomTemp/Raspuns",
+            sjson.encode({ ROOM=RoomName, TEMP=TMP_Current, HUM=HUM_Current }), 0, 0)
+        elseif topic == "RoomTemp/Setpoint/"..RoomName then
+          TMP_Set = tonumber(msg)
+          local temp = dofile("temp.lua")
+          temp.saveTempSet(TMP_Set)
+          temp = nil
+          collectgarbage()
+          print("MQTT set TMP_Set =", TMP_Set)
+          -- Send confirmation message
+          mqtt_client:publish("RoomTemp/Setpoint/Confirmation",
+            sjson.encode({ ROOM=RoomName, SETPOINT=TMP_Set }), 0, 0)
+          print("Sent setpoint confirmation")
+        end
+      end)
       
     elseif topic == "RoomTemp/Cerere" then
 		mqtt_client:publish("RoomTemp/Raspuns",
         sjson.encode({ ROOM=RoomName, TEMP=TMP_Current, HUM=HUM_Current }), 0, 0)
-	elseif topic == "RoomTemp/Setpoint/"..RoomName then
-		TMP_Set = tonumber(msg)
-		local temp = dofile("temp.lua")
-		temp.saveTempSet(TMP_Set)
-		temp = nil
-		collectgarbage()
-		print("MQTT set TMP_Set =", TMP_Set)
-		-- Send confirmation message
-		mqtt_client:publish("RoomTemp/Setpoint/Confirmation",
-			sjson.encode({ ROOM=RoomName, SETPOINT=TMP_Set }), 0, 0)
-		print("Sent setpoint confirmation")
+    elseif topic == "RoomTemp/Setpoint/"..RoomName then
+      TMP_Set = tonumber(msg)
+      local temp = dofile("temp.lua")
+      temp.saveTempSet(TMP_Set)
+      temp = nil
+      collectgarbage()
+      print("MQTT set TMP_Set =", TMP_Set)
+      -- Send confirmation message
+      mqtt_client:publish("RoomTemp/Setpoint/Confirmation",
+        sjson.encode({ ROOM=RoomName, SETPOINT=TMP_Set }), 0, 0)
+      print("Sent setpoint confirmation")
     end
   end)
 

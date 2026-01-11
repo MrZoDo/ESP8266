@@ -18,7 +18,9 @@ function W.tryConnectWiFi(ssid, pass, Sensor_ID)
 		gpio.write(pin_LED_WIFI, gpio.HIGH)
 		--Continue with MQTT connect
 		local MQTT = dofile("mqtt.lua")
-		MQTT.startMQTT(Sensor_ID)
+		-- Use SensorName if available, otherwise use Sensor_ID
+		local clientName = (SensorName ~= "Undefined" and SensorName) or Sensor_ID
+		MQTT.startMQTT(clientName)
 		MQTT = nil
 		collectgarbage()
 	  elseif retryCount >= 5 then
