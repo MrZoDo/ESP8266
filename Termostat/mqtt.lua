@@ -19,6 +19,7 @@ function M.startMQTT(clientName,Sensor_ID)
       print("Room name is set: "..RoomName)
       mqtt_client:subscribe("RoomTemp/Cerere", 0)
       mqtt_client:subscribe("RoomTemp/Setpoint/"..RoomName, 0)
+      mqtt_client:subscribe("RoomStatus/Cerere", 0)
       mqtt_client:publish("RoomStatus/Raspuns", sjson.encode({ ROOM=RoomName, Status="Online" }), 0, 0)
       print("Subscribed to topics and sent Online status")
     end
@@ -66,6 +67,7 @@ function M.startMQTT(clientName,Sensor_ID)
         -- Subscribe to actual topics
         mqtt_client:subscribe("RoomTemp/Cerere", 0)
         mqtt_client:subscribe("RoomTemp/Setpoint/"..RoomName, 0)
+        mqtt_client:subscribe("RoomStatus/Cerere", 0)
         mqtt_client:publish("RoomStatus/Raspuns", sjson.encode({ ROOM=RoomName, Status="Online" }), 0, 0)
         print("Subscribed to topics and sent Online status with room name: "..RoomName)
       end)
@@ -77,34 +79,52 @@ function M.startMQTT(clientName,Sensor_ID)
         if topic == "RoomTemp/Cerere" then
           mqtt_client:publish("RoomTemp/Raspuns",
             sjson.encode({ ROOM=RoomName, TEMP=TMP_Current, HUM=HUM_Current }), 0, 0)
+        elseif topic == "RoomStatus/Cerere" then
+          mqtt_client:publish("RoomStatus/Raspuns",
+            sjson.encode({ ROOM=RoomName, Status="Online" }), 0, 0)
+          print("Sent room status response")
         elseif topic == "RoomTemp/Setpoint/"..RoomName then
-          TMP_Set = tonumber(msg)
-          local temp = dofile("temp.lua")
-          temp.saveTempSet(TMP_Set)
-          temp = nil
-          collectgarbage()
-          print("MQTT set TMP_Set =", TMP_Set)
-          -- Send confirmation message
-          mqtt_client:publish("RoomTemp/Setpoint/Confirmation",
-            sjson.encode({ ROOM=RoomName, SETPOINT=TMP_Set }), 0, 0)
-          print("Sent setpoint confirmation")
+          local ok, response = pcall(sjson.decode, msg)
+          if ok and response.SETPOINT then
+            TMP_Set = tonumber(response.SETPOINT)
+            local temp = dofile("temp.lua")
+            temp.saveTempSet(TMP_Set)
+            temp = nil
+            collectgarbage()
+            print("MQTT set TMP_Set =", TMP_Set)
+            -- Send confirmation message
+            mqtt_client:publish("RoomTemp/Setpoint/Confirmation",
+              sjson.encode({ ROOM=RoomName, SETPOINT=TMP_Set }), 0, 0)
+            print("Sent setpoint confirmation")
+          else
+            print("Error parsing setpoint JSON or missing SETPOINT field")
+          end
         end
       end)
       
     elseif topic == "RoomTemp/Cerere" then
 		mqtt_client:publish("RoomTemp/Raspuns",
         sjson.encode({ ROOM=RoomName, TEMP=TMP_Current, HUM=HUM_Current }), 0, 0)
+    elseif topic == "RoomStatus/Cerere" then
+      mqtt_client:publish("RoomStatus/Raspuns",
+        sjson.encode({ ROOM=RoomName, Status="Online" }), 0, 0)
+      print("Sent room status response")
     elseif topic == "RoomTemp/Setpoint/"..RoomName then
-      TMP_Set = tonumber(msg)
-      local temp = dofile("temp.lua")
-      temp.saveTempSet(TMP_Set)
-      temp = nil
-      collectgarbage()
-      print("MQTT set TMP_Set =", TMP_Set)
-      -- Send confirmation message
-      mqtt_client:publish("RoomTemp/Setpoint/Confirmation",
-        sjson.encode({ ROOM=RoomName, SETPOINT=TMP_Set }), 0, 0)
-      print("Sent setpoint confirmation")
+      local ok, response = pcall(sjson.decode, msg)
+      if ok and response.SETPOINT then
+        TMP_Set = tonumber(response.SETPOINT)
+        local temp = dofile("temp.lua")
+        temp.saveTempSet(TMP_Set)
+        temp = nil
+        collectgarbage()
+        print("MQTT set TMP_Set =", TMP_Set)
+        -- Send confirmation message
+        mqtt_client:publish("RoomTemp/Setpoint/Confirmation",
+          sjson.encode({ ROOM=RoomName, SETPOINT=TMP_Set }), 0, 0)
+        print("Sent setpoint confirmation")
+      else
+        print("Error parsing setpoint JSON or missing SETPOINT field")
+      end
     end
   end)
 
